@@ -2,6 +2,13 @@
 
 HIREhub is an on-chain contributor directory and employer-attestation network built for the Rome Arena. One Solidity deployment on Hadrian serves MetaMask users and Solana wallet users. Solana users call the same contract from their Rome synthetic address and never need an EVM key.
 
+## Live deployment
+
+- App: https://rome-hirehub.vercel.app
+- Hadrian contract: `0x079206514810cf8051b9707dc6ffe7dfec5eb48d`
+- Explorer: https://via-hadrian.testnet.romeprotocol.xyz/address/0x079206514810cf8051b9707dc6ffe7dfec5eb48d
+- Verified source: https://verify.testnet.romeprotocol.xyz/repo-ui/200010/0x079206514810cf8051b9707dc6ffe7dfec5eb48d
+
 ## What the MVP proves
 
 - A contributor can create a public profile from either wallet lane.

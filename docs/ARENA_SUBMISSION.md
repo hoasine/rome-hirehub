@@ -40,10 +40,11 @@ EVM and Solana wallets — HIREhub.
 - Solana wallet: Wallet Standard with v1 support
 - Storage: on-chain records; evidence stays at an external URL such as GitHub or IPFS
 
-## Links to add before submission
+## Submission links
 
-- Live app: `ADD_DEPLOYED_FRONTEND_URL`
-- Source repository: `ADD_REPOSITORY_URL`
-- Hadrian contract: `ADD_CONTRACT_ADDRESS`
-- Via Explorer: `https://via-hadrian.testnet.romeprotocol.xyz/address/ADD_CONTRACT_ADDRESS`
+- Live app: `https://rome-hirehub.vercel.app`
+- Source repository: `https://github.com/hoasine/rome-hirehub`
+- Hadrian contract: `0x079206514810cf8051b9707dc6ffe7dfec5eb48d`
+- Via Explorer: `https://via-hadrian.testnet.romeprotocol.xyz/address/0x079206514810cf8051b9707dc6ffe7dfec5eb48d`
+- Verified source: `https://verify.testnet.romeprotocol.xyz/repo-ui/200010/0x079206514810cf8051b9707dc6ffe7dfec5eb48d`
 - Demo video: `ADD_VIDEO_URL`

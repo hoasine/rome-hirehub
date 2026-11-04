@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 function readSecret(prompt) {
   if (!process.stdin.isTTY || typeof process.stdin.setRawMode !== "function") {
@@ -53,12 +54,18 @@ try {
     throw new Error("Expected a 32-byte private key beginning with 0x.");
   }
 
-  const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
-  const result = spawnSync(npmCommand, ["run", "deploy:hadrian"], {
-    cwd: process.cwd(),
-    env: { ...process.env, PRIVATE_KEY: privateKey },
-    stdio: "inherit",
-  });
+  const hardhatCli = fileURLToPath(
+    new URL("../node_modules/hardhat/dist/src/cli.js", import.meta.url),
+  );
+  const result = spawnSync(
+    process.execPath,
+    [hardhatCli, "run", "scripts/deploy.ts", "--network", "hadrian"],
+    {
+      cwd: process.cwd(),
+      env: { ...process.env, PRIVATE_KEY: privateKey },
+      stdio: "inherit",
+    },
+  );
 
   if (result.error) throw result.error;
   if (result.status !== 0) process.exitCode = result.status ?? 1;

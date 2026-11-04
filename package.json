@@ -1,0 +1,46 @@
+{
+  "name": "approme",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit -p tsconfig.check.json",
+    "compile": "hardhat compile",
+    "test:contracts": "hardhat test",
+    "deploy:hadrian": "hardhat run scripts/deploy.ts --network hadrian",
+    "seed:hadrian": "hardhat run scripts/seed.ts --network hadrian",
+    "check": "npm run lint && npm run typecheck && npm run test:contracts && npm run build"
+  },
+  "dependencies": {
+    "@rome-protocol/sdk": "github:rome-protocol/rome-sdk-ts#v0.4.0",
+    "@solana/spl-token": "^0.4.15",
+    "@solana/wallet-standard-features": "^1.5.0",
+    "@solana/web3.js": "^1.99.0",
+    "@wallet-standard/app": "^1.1.1",
+    "@wallet-standard/base": "^1.1.1",
+    "lucide-react": "^1.68.0",
+    "next": "16.4.5",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "viem": "^2.57.16"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-node-test-runner": "^3.1.2",
+    "@nomicfoundation/hardhat-verify": "^3.1.4",
+    "@nomicfoundation/hardhat-viem": "^3.1.0",
+    "@tailwindcss/turbopack": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.5",
+    "hardhat": "^3.21.2",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "zod": "^3.25.76"
+  }
+}

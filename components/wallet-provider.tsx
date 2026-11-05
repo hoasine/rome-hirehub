@@ -155,22 +155,41 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const connectSolana = useCallback(async () => {
-    const wallets = getWallets().get() as readonly StandardWallet[];
-    const wallet = wallets.find(
-      (candidate) =>
-        candidate.name.toLowerCase().includes("solflare") &&
-        "standard:connect" in candidate.features &&
-        "solana:signMessage" in candidate.features &&
-        "solana:signTransaction" in candidate.features,
-    );
+    const registry = getWallets();
+    const isSolflare = (candidate: StandardWallet) =>
+      candidate.name.toLowerCase().includes("solflare") &&
+      "standard:connect" in candidate.features &&
+      "solana:signMessage" in candidate.features &&
+      "solana:signTransaction" in candidate.features;
+    let wallet = (registry.get() as readonly StandardWallet[]).find(isSolflare);
+
     if (!wallet) {
+      wallet = await new Promise<StandardWallet | undefined>((resolve) => {
+        let stop = () => {};
+        const timeout = window.setTimeout(() => {
+          stop();
+          resolve((registry.get() as readonly StandardWallet[]).find(isSolflare));
+        }, 1500);
+        stop = registry.on("register", () => {
+          const found = (registry.get() as readonly StandardWallet[]).find(isSolflare);
+          if (!found) return;
+          window.clearTimeout(timeout);
+          stop();
+          resolve(found);
+        });
+      });
+    }
+    if (!wallet) {
+      const detected = (registry.get() as readonly StandardWallet[]).map((item) => item.name);
       throw new Error(
-        "Solflare with Wallet Standard support was not found. Install Solflare and switch it to Devnet.",
+        detected.length
+          ? `Solflare was not detected. Available wallets: ${detected.join(", ")}.`
+          : "Solflare did not respond. Unlock it, allow the extension on this site, then reload HIREhub.",
       );
     }
 
     const connect = wallet.features["standard:connect"] as ConnectFeature;
-    const result = wallet.accounts.length ? { accounts: wallet.accounts } : await connect.connect();
+    const result = await connect.connect();
     const account = result.accounts[0];
     if (!account) throw new Error("Solflare did not return an account.");
 

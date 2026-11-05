@@ -231,6 +231,8 @@ function HireHubExperience() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(!isPreviewMode);
   const [notice, setNotice] = useState<string | null>(null);
+  const [walletNotice, setWalletNotice] = useState<string | null>(null);
+  const [connectingLane, setConnectingLane] = useState<"evm" | "solana" | null>(null);
 
   const refresh = useCallback(async () => {
     if (isPreviewMode) return;
@@ -365,11 +367,15 @@ function HireHubExperience() {
 
   const connect = async (lane: "evm" | "solana") => {
     setNotice(null);
+    setWalletNotice(null);
+    setConnectingLane(lane);
     try {
       if (lane === "evm") await wallet.connectEvm();
       else await wallet.connectSolana();
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Wallet connection failed.");
+      setWalletNotice(error instanceof Error ? error.message : "Wallet connection failed.");
+    } finally {
+      setConnectingLane(null);
     }
   };
 
@@ -398,8 +404,13 @@ function HireHubExperience() {
                 <Wallet size={14} /> <span>{shortAddress(wallet.evmAddress)}</span>
               </button>
             ) : (
-              <button className="button button-small" onClick={() => void connect("evm")}>
-                <Wallet size={14} /> <span>MetaMask</span>
+              <button
+                className="button button-small"
+                type="button"
+                disabled={connectingLane === "evm"}
+                onClick={() => void connect("evm")}
+              >
+                <Wallet size={14} /> <span>{connectingLane === "evm" ? "Connecting…" : "MetaMask"}</span>
               </button>
             )}
             {wallet.syntheticAddress ? (
@@ -411,12 +422,23 @@ function HireHubExperience() {
                 <Sparkles size={14} /> <span>{shortAddress(wallet.syntheticAddress)}</span>
               </button>
             ) : (
-              <button className="button button-small" onClick={() => void connect("solana")}>
-                <Sparkles size={14} /> <span>Solflare</span>
+              <button
+                className="button button-small"
+                type="button"
+                disabled={connectingLane === "solana"}
+                onClick={() => void connect("solana")}
+              >
+                <Sparkles size={14} />{" "}
+                <span>{connectingLane === "solana" ? "Connecting…" : "Solflare"}</span>
               </button>
             )}
           </div>
         </div>
+        {walletNotice && (
+          <div className="wallet-alert" role="alert">
+            {walletNotice}
+          </div>
+        )}
       </header>
 
       <main>

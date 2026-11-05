@@ -1,12 +1,18 @@
 "use client";
 
 import {
+  Activity,
+  ArrowRight,
   ArrowUpRight,
+  BadgeCheck,
+  Blocks,
   BriefcaseBusiness,
   Check,
   ChevronRight,
   CircleAlert,
   ExternalLink,
+  Fingerprint,
+  Globe2,
   Link2,
   LoaderCircle,
   Search,
@@ -65,14 +71,25 @@ function ProfileAvatar({ profile, large = false }: { profile: Profile; large?: b
 }
 
 function ProfileCard({ profile, onOpen }: { profile: Profile; onOpen(): void }) {
+  const walletKinds = [...new Set(profile.wallets.map((wallet) => wallet.kind))];
+
   return (
-    <button className="profile-card" onClick={onOpen}>
+    <button className="profile-card" type="button" onClick={onOpen}>
       <div className="profile-top">
         <ProfileAvatar profile={profile} />
-        <div>
+        <div className="profile-identity">
           <h3 className="profile-name">{profile.displayName}</h3>
           <div className="profile-address">{shortAddress(profile.owner)}</div>
         </div>
+        <BadgeCheck className="verified-mark" size={19} aria-label="On-chain profile" />
+      </div>
+      <div className="wallet-badges">
+        {walletKinds.map((kind) => (
+          <span className={`wallet-badge wallet-badge-${kind}`} key={kind}>
+            {kind === "evm" ? <Wallet size={12} /> : <Sparkles size={12} />}
+            {kind === "evm" ? "EVM" : "Solana"}
+          </span>
+        ))}
       </div>
       <div className="profile-headline">{profile.headline}</div>
       <p className="profile-bio">{profile.bio}</p>
@@ -90,6 +107,9 @@ function ProfileCard({ profile, onOpen }: { profile: Profile; onOpen(): void }) 
           <span>wallets</span>
         </div>
       </div>
+      <span className="profile-open">
+        View on-chain profile <ArrowRight size={15} />
+      </span>
     </button>
   );
 }
@@ -223,9 +243,9 @@ function TextField({
 
 function HireHubExperience() {
   const wallet = useRomeWallet();
-  const [profiles, setProfiles] = useState<Profile[]>(demoProfiles);
+  const [profiles, setProfiles] = useState<Profile[]>(isPreviewMode ? demoProfiles : []);
   const [selected, setSelected] = useState<Profile | null>(null);
-  const [work, setWork] = useState<WorkRecord[]>(demoWork);
+  const [work, setWork] = useState<WorkRecord[]>(isPreviewMode ? demoWork : []);
   const [reviewRecord, setReviewRecord] = useState<WorkRecord | null>(null);
   const [modal, setModal] = useState<ModalKind>(null);
   const [query, setQuery] = useState("");
@@ -283,6 +303,19 @@ function HireHubExperience() {
         profile.wallets.some((item) => item.address.toLowerCase().includes(term)),
     );
   }, [profiles, query]);
+
+  const networkStats = useMemo(
+    () => ({
+      profiles: profiles.length,
+      records: profiles.reduce((total, profile) => total + profile.workCount, 0),
+      attestations: profiles.reduce(
+        (total, profile) => total + profile.attestationCount,
+        0,
+      ),
+      wallets: profiles.reduce((total, profile) => total + profile.wallets.length, 0),
+    }),
+    [profiles],
+  );
 
   const run = async (data: `0x${string}`, close = true) => {
     setNotice(null);
@@ -390,9 +423,7 @@ function HireHubExperience() {
           <nav className="nav" aria-label="Primary navigation">
             <a href="#contributors">Contributors</a>
             <a href="#how-it-works">How it works</a>
-            <a href="https://docs.rome.builders" target="_blank" rel="noreferrer">
-              Built on Rome
-            </a>
+            <a href="#built-on-rome">Built on Rome</a>
           </nav>
           <div className="wallet-cluster">
             {wallet.evmAddress ? (
@@ -443,8 +474,13 @@ function HireHubExperience() {
 
       <main>
         <section className="shell hero">
-          <div>
-            <p className="eyebrow">Work that travels with you</p>
+          <div className="hero-content">
+            <div className="hero-kicker">
+              <span className="live-indicator">
+                <span className="dot" /> Live on Hadrian
+              </span>
+              <span>One identity layer · Two wallet ecosystems</span>
+            </div>
             <h1>
               One reputation. <em>Both wallet worlds.</em>
             </h1>
@@ -452,17 +488,45 @@ function HireHubExperience() {
               HIREhub turns shipped work and employer attestations into a shared
               contributor record for EVM and Solana wallets—one application, one state.
             </p>
+            <div className="hero-actions">
+              <a className="button button-primary button-large" href="#contributors">
+                Explore contributors <ArrowRight size={17} />
+              </a>
+              <a
+                className="button button-large"
+                href={HIREHUB_ADDRESS ? `${VIA_BASE_URL}/address/${HIREHUB_ADDRESS}` : VIA_BASE_URL}
+                target="_blank"
+                rel="noreferrer"
+              >
+                View contract <ArrowUpRight size={16} />
+              </a>
+            </div>
+            <div className="hero-trust">
+              <span><ShieldCheck size={15} /> Employer-signed</span>
+              <span><Fingerprint size={15} /> Consent-linked</span>
+              <span><Blocks size={15} /> Fully on-chain</span>
+            </div>
           </div>
           <aside className="hero-note">
+            <div className="hero-note-head">
+              <span className="network-pill"><span className="dot" /> Network online</span>
+              <Activity size={18} />
+            </div>
             <strong>Your work, independently verifiable.</strong>
-            <p>
-              Wallet links require consent from both sides. Employers review only records
-              addressed to them. Every action settles through Rome on Solana.
-            </p>
-            <span className="network-pill">
-              <span className="dot" /> Hadrian testnet
-            </span>
+            <p>Every profile, wallet consent, delivery record, and employer review settles to one shared state.</p>
+            <div className="network-stack">
+              <div><span>Contract</span><strong>HireHub.sol</strong></div>
+              <div><span>Network</span><strong>Hadrian · 200010</strong></div>
+              <div><span>Wallet lanes</span><strong>MetaMask + Solflare</strong></div>
+            </div>
           </aside>
+        </section>
+
+        <section className="shell network-stats" aria-label="HIREhub network statistics">
+          <div><strong>{loading ? "—" : networkStats.profiles}</strong><span>contributors</span></div>
+          <div><strong>{loading ? "—" : networkStats.wallets}</strong><span>verified wallets</span></div>
+          <div><strong>{loading ? "—" : networkStats.records}</strong><span>work records</span></div>
+          <div><strong>{loading ? "—" : networkStats.attestations}</strong><span>attestations</span></div>
         </section>
 
         <section className="shell section section-rule" id="contributors">
@@ -530,20 +594,53 @@ function HireHubExperience() {
           </div>
           <div className="how-grid">
             <article className="how-card">
-              <span className="how-number">01</span>
+              <div className="how-top"><span className="how-number">01</span><Fingerprint size={22} /></div>
               <h3>Create one contributor profile</h3>
               <p>Start with MetaMask or Solflare. Your signing wallet becomes the profile owner.</p>
             </article>
             <article className="how-card">
-              <span className="how-number">02</span>
+              <div className="how-top"><span className="how-number">02</span><Link2 size={22} /></div>
               <h3>Link wallets with consent</h3>
               <p>The owner proposes a wallet. The target wallet must sign separately before it joins.</p>
             </article>
             <article className="how-card">
-              <span className="how-number">03</span>
+              <div className="how-top"><span className="how-number">03</span><ShieldCheck size={22} /></div>
               <h3>Turn delivery into proof</h3>
               <p>Submit evidence to an employer, who approves or rejects it and signs a public review.</p>
             </article>
+          </div>
+        </section>
+
+        <section className="shell section architecture" id="built-on-rome">
+          <div className="architecture-copy">
+            <p className="eyebrow">Rome-native by design</p>
+            <h2>One contract.<br /><em>No identity bridge.</em></h2>
+            <p>
+              Solana users control a Rome synthetic address directly from Solflare.
+              EVM users arrive through MetaMask. Both write to the same Solidity state,
+              so reputation never needs to be mirrored or synchronized.
+            </p>
+            <a href="https://docs.rome.builders" target="_blank" rel="noreferrer">
+              Explore Rome documentation <ArrowUpRight size={14} />
+            </a>
+          </div>
+          <div className="architecture-map" aria-label="HIREhub wallet architecture">
+            <div className="architecture-node">
+              <Wallet size={20} /><span>MetaMask</span><small>EVM wallet</small>
+            </div>
+            <span className="architecture-line" />
+            <div className="architecture-core">
+              <span className="brand-mark">H</span>
+              <strong>HireHub.sol</strong>
+              <small>Shared Rome state</small>
+            </div>
+            <span className="architecture-line" />
+            <div className="architecture-node">
+              <Sparkles size={20} /><span>Solflare</span><small>Solana wallet</small>
+            </div>
+            <div className="architecture-settlement">
+              <Globe2 size={15} /> Settled through Rome on Solana
+            </div>
           </div>
         </section>
       </main>

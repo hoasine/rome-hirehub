@@ -5,6 +5,7 @@ import {
   isSyntheticProvisioned,
   provisionSynthetic,
   submitRomeTx,
+  submitRomeTxSolanaLane,
   submitRomeTxV1,
   syntheticAddress as deriveSyntheticAddress,
   type LaneSigner,
@@ -78,7 +79,7 @@ interface WalletContextValue {
   connectSolana(): Promise<void>;
   selectLane(lane: WalletLane): void;
   disconnect(): void;
-  executeCall(data: Hex): Promise<Hex>;
+  executeCall(data: Hex): Promise<void>;
   resetTransaction(): void;
 }
 
@@ -105,6 +106,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [signLegacyTransaction, setSignLegacyTransaction] = useState<
     ((transaction: Transaction) => Promise<Transaction>) | null
   >(null);
+  const [solanaSupportsV1, setSolanaSupportsV1] = useState(false);
   const [activeLane, setActiveLane] = useState<WalletLane | null>(null);
   const [transaction, setTransaction] = useState<TransactionState>({ status: "idle" });
 
@@ -195,11 +197,15 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
     const signMessage = wallet.features["solana:signMessage"] as SignMessageFeature;
     const signTransaction = wallet.features["solana:signTransaction"] as SignTransactionFeature;
-    if (!signTransaction.supportedTransactionVersions?.includes(1)) {
-      throw new Error("This Solflare version does not advertise Solana v1 transaction support.");
-    }
-    if (!signTransaction.supportedTransactionVersions.includes("legacy")) {
-      throw new Error("This Solflare version cannot activate a new Rome synthetic address.");
+    const versions = signTransaction.supportedTransactionVersions ?? [];
+    const supportsV1 = versions.some((version) => version === 1 || version === "1");
+    const supportsLegacy = versions.some(
+      (version) => version === "legacy" || version === 0 || version === "0",
+    );
+    if (!supportsV1 && !supportsLegacy) {
+      throw new Error(
+        `Solflare cannot sign a Rome transaction. Reported versions: ${versions.join(", ") || "none"}.`,
+      );
     }
 
     const payer = new PublicKey(account.address);
@@ -226,19 +232,23 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
     setSolanaAddress(account.address);
     setSyntheticAddress(getAddress(deriveSyntheticAddress(payer)));
-    setSolanaSigner(signer);
-    setSignLegacyTransaction(() => async (transaction: Transaction) => {
-      const output = await signTransaction.signTransaction({
-        account,
-        transaction: transaction.serialize({
-          requireAllSignatures: false,
-          verifySignatures: false,
-        }),
-        chain: "solana:devnet",
-      });
-      const signed = output[0]?.signedTransaction;
-      if (!signed) throw new Error("Solflare returned no signed activation transaction.");
-      return Transaction.from(signed);
+    setSolanaSupportsV1(supportsV1);
+    setSolanaSigner(supportsV1 ? signer : null);
+    setSignLegacyTransaction(() => {
+      if (!supportsLegacy) return null;
+      return async (transaction: Transaction) => {
+        const output = await signTransaction.signTransaction({
+          account,
+          transaction: transaction.serialize({
+            requireAllSignatures: false,
+            verifySignatures: false,
+          }),
+          chain: "solana:devnet",
+        });
+        const signed = output[0]?.signedTransaction;
+        if (!signed) throw new Error("Solflare returned no signed activation transaction.");
+        return Transaction.from(signed);
+      };
     });
     setActiveLane("solana");
   }, []);
@@ -249,11 +259,12 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setSyntheticAddress(null);
     setSolanaSigner(null);
     setSignLegacyTransaction(null);
+    setSolanaSupportsV1(false);
     setActiveLane(null);
   }, []);
 
   const executeCall = useCallback(
-    async (data: Hex): Promise<Hex> => {
+    async (data: Hex): Promise<void> => {
       if (!HIREHUB_ADDRESS) {
         throw new Error("Preview mode is read-only. Deploy HireHub and configure its address first.");
       }
@@ -275,57 +286,70 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           const receipt = await publicClient.waitForTransactionReceipt({ hash });
           if (receipt.status !== "success") throw new Error("The contract call reverted.");
           setTransaction({ status: "success", message: "On-chain record confirmed.", hash });
-          return hash;
+          return;
         }
 
-        if (
-          activeLane === "solana" &&
-          syntheticAddress &&
-          solanaSigner &&
-          signLegacyTransaction
-        ) {
-          const provisioned = await isSyntheticProvisioned(
+        if (activeLane === "solana" && syntheticAddress && solanaAddress) {
+          const laneDeps = {
             connection,
-            ROME_PROGRAM_ID,
-            syntheticAddress,
-          );
-          if (!provisioned) {
+            proxyUrl: hadrian.rpcUrls.default.http[0],
+            chainId: hadrian.id,
+            programId: ROME_PROGRAM_ID,
+          };
+          if (solanaSupportsV1 && solanaSigner) {
+            if (signLegacyTransaction) {
+              const provisioned = await isSyntheticProvisioned(
+                connection,
+                ROME_PROGRAM_ID,
+                syntheticAddress,
+              );
+              if (!provisioned) {
+                setTransaction({
+                  status: "signing",
+                  message: "Activate your Rome synthetic address in Solflare.",
+                });
+                await provisionSynthetic({
+                  ...laneDeps,
+                  payer: solanaSigner.payer,
+                  signTransaction: signLegacyTransaction,
+                });
+              }
+            }
             setTransaction({
               status: "signing",
-              message: "Activate your Rome synthetic address in Solflare.",
+              message: "Solflare will ask for an authorization and transaction signature.",
             });
-            await provisionSynthetic({
-              connection,
-              proxyUrl: hadrian.rpcUrls.default.http[0],
-              chainId: hadrian.id,
-              programId: ROME_PROGRAM_ID,
-              payer: solanaSigner.payer,
-              signTransaction: signLegacyTransaction,
+            const result = await submitRomeTxV1(
+              { ...laneDeps, signer: solanaSigner },
+              { to: HIREHUB_ADDRESS, data },
+            );
+            if (result.receipt?.status !== "0x1") {
+              throw new Error("The Rome transaction was not confirmed successfully.");
+            }
+            setTransaction({
+              status: "success",
+              message: `Confirmed through the ${result.route} Solana route.`,
+              hash: result.hash,
             });
+            return;
           }
-          setTransaction({
-            status: "signing",
-            message: "Solflare will ask for an authorization and transaction signature.",
-          });
-          const result = await submitRomeTxV1(
-            {
-              connection,
-              proxyUrl: hadrian.rpcUrls.default.http[0],
-              chainId: hadrian.id,
-              programId: ROME_PROGRAM_ID,
-              signer: solanaSigner,
-            },
-            { to: HIREHUB_ADDRESS, data },
-          );
-          if (result.receipt?.status !== "0x1") {
-            throw new Error("The Rome transaction was not confirmed successfully.");
+
+          if (signLegacyTransaction) {
+            setTransaction({
+              status: "signing",
+              message: "Confirm the Rome transaction in Solflare. A new wallet signs twice.",
+            });
+            const payer = new PublicKey(solanaAddress);
+            const result = await submitRomeTxSolanaLane(
+              { ...laneDeps, payer, signTransaction: signLegacyTransaction },
+              { to: HIREHUB_ADDRESS, data },
+            );
+            setTransaction({
+              status: "success",
+              message: `Confirmed through Solana legacy route: ${result.signature}`,
+            });
+            return;
           }
-          setTransaction({
-            status: "success",
-            message: `Confirmed through the ${result.route} Solana route.`,
-            hash: result.hash,
-          });
-          return result.hash;
         }
         throw new Error("Connect an EVM or Solana wallet first.");
       } catch (error) {
@@ -333,7 +357,15 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         throw error;
       }
     },
-    [activeLane, evmAddress, signLegacyTransaction, solanaSigner, syntheticAddress],
+    [
+      activeLane,
+      evmAddress,
+      signLegacyTransaction,
+      solanaAddress,
+      solanaSigner,
+      solanaSupportsV1,
+      syntheticAddress,
+    ],
   );
 
   const value = useMemo<WalletContextValue>(

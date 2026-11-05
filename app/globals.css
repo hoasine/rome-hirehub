@@ -96,17 +96,11 @@ a {
   letter-spacing: -0.03em;
 }
 
-.brand-mark {
+.brand-logo {
   width: 34px;
   height: 34px;
-  display: grid;
-  place-items: center;
   border-radius: 10px;
-  color: white;
-  background: linear-gradient(145deg, #8d267f, var(--plum-dark));
   box-shadow: 0 7px 18px rgba(113, 22, 103, 0.2);
-  font-family: var(--font-caslon), serif;
-  font-size: 23px;
 }
 
 .nav {
@@ -1030,6 +1024,7 @@ a {
 }
 
 .architecture {
+  margin-bottom: 72px;
   padding: 75px;
   border: 1px solid rgba(113, 22, 103, 0.18);
   border-radius: 28px;
@@ -1095,6 +1090,11 @@ a {
   background: rgba(255, 255, 255, 0.08);
   text-align: center;
   backdrop-filter: blur(8px);
+}
+
+.architecture-logo {
+  border-radius: 13px;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.22);
 }
 
 .architecture-node > span,
@@ -1246,6 +1246,7 @@ a {
 
   .architecture {
     width: min(100% - 24px, 1180px);
+    margin-bottom: 42px;
     padding: 34px 22px 72px;
     border-radius: 22px;
   }

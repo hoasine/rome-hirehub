@@ -29,6 +29,7 @@ import {
   useState,
   type FormEvent,
 } from "react";
+import Image from "next/image";
 import { getAddress, isAddress } from "viem";
 import { WalletProvider, useRomeWallet } from "./wallet-provider";
 import { demoProfiles, demoWork } from "@/lib/demo-data";
@@ -417,7 +418,14 @@ function HireHubExperience() {
       <header className="site-header">
         <div className="shell header-inner">
           <a className="brand" href="#">
-            <span className="brand-mark">H</span>
+            <Image
+              className="brand-logo"
+              src="/hirehub-mark.svg"
+              alt=""
+              width={34}
+              height={34}
+              priority
+            />
             HIREhub
           </a>
           <nav className="nav" aria-label="Primary navigation">
@@ -630,7 +638,13 @@ function HireHubExperience() {
             </div>
             <span className="architecture-line" />
             <div className="architecture-core">
-              <span className="brand-mark">H</span>
+              <Image
+                className="architecture-logo"
+                src="/hirehub-mark.svg"
+                alt=""
+                width={44}
+                height={44}
+              />
               <strong>HireHub.sol</strong>
               <small>Shared Rome state</small>
             </div>

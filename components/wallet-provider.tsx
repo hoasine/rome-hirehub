@@ -12,6 +12,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -30,6 +31,8 @@ type WalletLane = "evm" | "solana";
 
 interface Eip1193Provider {
   request(args: { method: string; params?: unknown[] }): Promise<unknown>;
+  on?(event: "accountsChanged", listener: (accounts: string[]) => void): void;
+  removeListener?(event: "accountsChanged", listener: (accounts: string[]) => void): void;
 }
 
 interface StandardAccount {
@@ -99,6 +102,23 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [solanaSigner, setSolanaSigner] = useState<LaneSigner | null>(null);
   const [activeLane, setActiveLane] = useState<WalletLane | null>(null);
   const [transaction, setTransaction] = useState<TransactionState>({ status: "idle" });
+
+  useEffect(() => {
+    const provider = ethereumProvider();
+    if (!provider?.on) return;
+
+    const handleAccountsChanged = (accounts: string[]) => {
+      const account = accounts[0];
+      setEvmAddress(account ? getAddress(account) : null);
+      setTransaction({ status: "idle" });
+      if (!account) {
+        setActiveLane((lane) => (lane === "evm" ? null : lane));
+      }
+    };
+
+    provider.on("accountsChanged", handleAccountsChanged);
+    return () => provider.removeListener?.("accountsChanged", handleAccountsChanged);
+  }, []);
 
   const connectEvm = useCallback(async () => {
     const provider = ethereumProvider();

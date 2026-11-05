@@ -1,5 +1,6 @@
 "use client";
 
+import "@/lib/browser-buffer";
 import { getWallets } from "@wallet-standard/app";
 import {
   isSyntheticProvisioned,

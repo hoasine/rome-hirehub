@@ -2,12 +2,14 @@
 
 import { getWallets } from "@wallet-standard/app";
 import {
+  isSyntheticProvisioned,
+  provisionSynthetic,
   submitRomeTx,
   submitRomeTxV1,
   syntheticAddress as deriveSyntheticAddress,
   type LaneSigner,
 } from "@rome-protocol/sdk";
-import { Connection, PublicKey } from "@solana/web3.js";
+import { Connection, PublicKey, Transaction } from "@solana/web3.js";
 import {
   createContext,
   useCallback,
@@ -100,6 +102,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [solanaAddress, setSolanaAddress] = useState<string | null>(null);
   const [syntheticAddress, setSyntheticAddress] = useState<Address | null>(null);
   const [solanaSigner, setSolanaSigner] = useState<LaneSigner | null>(null);
+  const [signLegacyTransaction, setSignLegacyTransaction] = useState<
+    ((transaction: Transaction) => Promise<Transaction>) | null
+  >(null);
   const [activeLane, setActiveLane] = useState<WalletLane | null>(null);
   const [transaction, setTransaction] = useState<TransactionState>({ status: "idle" });
 
@@ -174,6 +179,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     if (!signTransaction.supportedTransactionVersions?.includes(1)) {
       throw new Error("This Solflare version does not advertise Solana v1 transaction support.");
     }
+    if (!signTransaction.supportedTransactionVersions.includes("legacy")) {
+      throw new Error("This Solflare version cannot activate a new Rome synthetic address.");
+    }
 
     const payer = new PublicKey(account.address);
     const signer: LaneSigner = {
@@ -200,6 +208,19 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setSolanaAddress(account.address);
     setSyntheticAddress(getAddress(deriveSyntheticAddress(payer)));
     setSolanaSigner(signer);
+    setSignLegacyTransaction(() => async (transaction: Transaction) => {
+      const output = await signTransaction.signTransaction({
+        account,
+        transaction: transaction.serialize({
+          requireAllSignatures: false,
+          verifySignatures: false,
+        }),
+        chain: "solana:devnet",
+      });
+      const signed = output[0]?.signedTransaction;
+      if (!signed) throw new Error("Solflare returned no signed activation transaction.");
+      return Transaction.from(signed);
+    });
     setActiveLane("solana");
   }, []);
 
@@ -208,6 +229,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setSolanaAddress(null);
     setSyntheticAddress(null);
     setSolanaSigner(null);
+    setSignLegacyTransaction(null);
     setActiveLane(null);
   }, []);
 
@@ -237,7 +259,31 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           return hash;
         }
 
-        if (activeLane === "solana" && syntheticAddress && solanaSigner) {
+        if (
+          activeLane === "solana" &&
+          syntheticAddress &&
+          solanaSigner &&
+          signLegacyTransaction
+        ) {
+          const provisioned = await isSyntheticProvisioned(
+            connection,
+            ROME_PROGRAM_ID,
+            syntheticAddress,
+          );
+          if (!provisioned) {
+            setTransaction({
+              status: "signing",
+              message: "Activate your Rome synthetic address in Solflare.",
+            });
+            await provisionSynthetic({
+              connection,
+              proxyUrl: hadrian.rpcUrls.default.http[0],
+              chainId: hadrian.id,
+              programId: ROME_PROGRAM_ID,
+              payer: solanaSigner.payer,
+              signTransaction: signLegacyTransaction,
+            });
+          }
           setTransaction({
             status: "signing",
             message: "Solflare will ask for an authorization and transaction signature.",
@@ -268,7 +314,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         throw error;
       }
     },
-    [activeLane, evmAddress, solanaSigner, syntheticAddress],
+    [activeLane, evmAddress, signLegacyTransaction, solanaSigner, syntheticAddress],
   );
 
   const value = useMemo<WalletContextValue>(

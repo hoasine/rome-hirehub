@@ -148,6 +148,44 @@ const scenarios: Scenario[] = [
   },
 ];
 
+const extraWork: [string, string, string][] = [
+  ["Wallet connect error copy", "Rewrite connection errors so every message names the next action.", "wallet-provider.tsx"],
+  ["Token allowance flow", "Ask for an ERC-20 allowance only when the balance and amount require it.", "hirehub-app.tsx"],
+  ["Agreement share page", "Publish a read-only page for every agreement with explorer links.", "app/engagement/[id]/page.tsx"],
+  ["Security header review", "Review the CSP and response headers for the production deployment.", "next.config.ts"],
+  ["Reclaim window tests", "Prove escrow can be reclaimed only after the stale window.", "test/HireHubEngagements.ts"],
+  ["Mobile profile drawer", "Make the profile drawer keyboard and screen-reader friendly on mobile.", "app/globals.css"],
+  ["Deployment runbook", "Document a safe, repeatable deployment and verification flow.", "README.md"],
+  ["Dispute settlement copy", "Explain dispute outcomes in plain language for both sides.", "docs/ARCHITECTURE.md"],
+  ["Browser smoke tests", "Cover the judge journey on desktop and mobile with Playwright.", "e2e/smoke.spec.ts"],
+  ["URL allowlist", "Accept only HTTPS and IPFS evidence links across the app.", "lib/urls.ts"],
+  ["Demo script polish", "Tighten the recorded walkthrough to under three minutes.", "docs/DEMO_SCRIPT.md"],
+  ["CI pipeline", "Run lint, types, tests, build, and browser checks on every push.", ".github/workflows/check.yml"],
+];
+
+const extraReviews = [
+  "Delivered exactly to scope with clear notes.",
+  "Fast turnaround and easy to review.",
+  "Solid work; small follow-ups handled without prompting.",
+  "Great communication from start to finish.",
+];
+
+function extraScenarios(rounds: number): Scenario[] {
+  const contributors: PersonaKey[] = ["lan", "diego", "aiko", "priya"];
+  const count = Math.min(Math.max(rounds - 1, 0) * 4, extraWork.length);
+  return extraWork.slice(0, count).map(([title, description, file], index) => ({
+    key: `extra-${index + 1}`,
+    employer: index % 2 === 0 ? "aurora" : "solstice",
+    contributor: contributors[index % contributors.length],
+    steps: [
+      ["create", title, description, index % 3 === 0 ? 60 + index * 15 : 0],
+      ["accept"],
+      ["evidence", `${REPO}/blob/master/${file}`],
+      ["approve", index % 4 === 3 ? 4 : 5, extraReviews[index % extraReviews.length]],
+    ],
+  }));
+}
+
 interface SeedState {
   keys: Partial<Record<PersonaKey, Hex>>;
   token?: Address;
@@ -273,7 +311,14 @@ async function main() {
   const token = state.token;
   const decimals = 6;
 
-  for (const scenario of scenarios) {
+  const rounds = Number(process.env.DEMO_ROUNDS ?? 1);
+  if (!Number.isInteger(rounds) || rounds < 1 || rounds > 4) {
+    throw new Error("DEMO_ROUNDS must be a whole number from 1 to 4.");
+  }
+  const plan = [...scenarios, ...extraScenarios(rounds)];
+  console.log(`Seeding ${plan.length} demo agreements (${rounds} round${rounds > 1 ? "s" : ""}).`);
+
+  for (const scenario of plan) {
     const progress = (state.scenarios[scenario.key] ??= { done: 0 });
     const employer = wallets[scenario.employer];
     const contributor = scenario.contributor === "owner" ? null : wallets[scenario.contributor];

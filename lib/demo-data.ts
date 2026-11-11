@@ -11,6 +11,7 @@ export const demoProfiles: Profile[] = [
     createdAt: 1793401200,
     workCount: 3,
     attestationCount: 2,
+    completedAgreements: 2,
     wallets: [
       {
         address: "0x7f2D39e2a45D7484aA65f6B63F1f94E2a851D5Af",
@@ -34,6 +35,7 @@ export const demoProfiles: Profile[] = [
     createdAt: 1793228400,
     workCount: 4,
     attestationCount: 4,
+    completedAgreements: 3,
     wallets: [
       {
         address: "0x3Fa6E34B41DC1Ce583F64F7B495AD35DdE76E813",
@@ -52,6 +54,7 @@ export const demoProfiles: Profile[] = [
     createdAt: 1792969200,
     workCount: 2,
     attestationCount: 1,
+    completedAgreements: 1,
     wallets: [
       {
         address: "0xA8642Fd55193D34FD987D4DeFA60F3a55f7919b0",

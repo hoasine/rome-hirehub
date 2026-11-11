@@ -88,6 +88,13 @@ type ModalKind =
 
 const ZERO_HASH = `0x${"0".repeat(64)}`;
 
+// Must match the prefix written by scripts/seed-demo.ts.
+const DEMO_BIO_PREFIX = "Demo account ·";
+
+function isDemoProfile(profile: Profile) {
+  return profile.bio.startsWith(DEMO_BIO_PREFIX);
+}
+
 const engagementActions: Partial<
   Record<string, Parameters<typeof encodeEngagementCall>[0]>
 > = {
@@ -137,6 +144,11 @@ function ProfileCard({ profile, onOpen }: { profile: Profile; onOpen(): void }) 
         <BadgeCheck className="verified-mark" size={19} aria-label="On-chain profile" />
       </div>
       <div className="wallet-badges">
+        {isDemoProfile(profile) && (
+          <span className="wallet-badge wallet-badge-demo" title="Seeded test account">
+            Demo
+          </span>
+        )}
         {walletKinds.map((kind) => (
           <span className={`wallet-badge wallet-badge-${kind}`} key={kind}>
             {kind === "solana" ? <Sparkles size={12} /> : <Wallet size={12} />}
@@ -148,11 +160,11 @@ function ProfileCard({ profile, onOpen }: { profile: Profile; onOpen(): void }) 
       <p className="profile-bio">{profile.bio}</p>
       <div className="profile-stats">
         <div className="stat">
-          <strong>{profile.workCount}</strong>
-          <span>work records</span>
+          <strong>{profile.completedAgreements}</strong>
+          <span>agreements</span>
         </div>
         <div className="stat">
-          <strong>{profile.attestationCount}</strong>
+          <strong>{profile.attestationCount + profile.completedAgreements}</strong>
           <span>attestations</span>
         </div>
         <div className="stat">
@@ -641,9 +653,9 @@ function HireHubExperience({ initialProfileId }: { initialProfileId?: bigint }) 
   const networkStats = useMemo(
     () => ({
       profiles: profiles.length,
-      records: profiles.reduce((total, profile) => total + profile.workCount, 0),
+      agreements: profiles.reduce((total, profile) => total + profile.completedAgreements, 0),
       attestations: profiles.reduce(
-        (total, profile) => total + profile.attestationCount,
+        (total, profile) => total + profile.attestationCount + profile.completedAgreements,
         0,
       ),
       wallets: profiles.reduce((total, profile) => total + profile.wallets.length, 0),
@@ -1054,7 +1066,7 @@ function HireHubExperience({ initialProfileId }: { initialProfileId?: bigint }) 
         <section className="shell network-stats" aria-label="HIREhub network statistics">
           <div><strong>{loading ? "—" : networkStats.profiles}</strong><span>contributors</span></div>
           <div><strong>{loading ? "—" : networkStats.wallets}</strong><span>consent-linked addresses</span></div>
-          <div><strong>{loading ? "—" : networkStats.records}</strong><span>work records</span></div>
+          <div><strong>{loading ? "—" : networkStats.agreements}</strong><span>completed agreements</span></div>
           <div><strong>{loading ? "—" : networkStats.attestations}</strong><span>attestations</span></div>
         </section>
 

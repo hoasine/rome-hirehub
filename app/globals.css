@@ -667,6 +667,11 @@ a {
   color: var(--plum);
 }
 
+.wallet-badge-demo {
+  background: #fdf1d6;
+  color: #8a5a00;
+}
+
 .wallet-badge-rome {
   background: #e7edf2;
   color: #344454;

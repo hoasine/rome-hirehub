@@ -45,7 +45,10 @@ function readSecret(prompt) {
   });
 }
 
-console.log("HIREhub Hadrian deployment");
+const script = process.argv[2] ?? "scripts/deploy.ts";
+const isDeployment = script === "scripts/deploy.ts";
+
+console.log(isDeployment ? "HIREhub Hadrian deployment" : `HIREhub Hadrian: ${script}`);
 console.log("Paste the private key for your funded TEST wallet. Input is hidden.");
 
 let privateKey;
@@ -60,7 +63,7 @@ try {
   );
   const result = spawnSync(
     process.execPath,
-    [hardhatCli, "run", "scripts/deploy.ts", "--network", "hadrian"],
+    [hardhatCli, "run", script, "--network", "hadrian"],
     {
       cwd: process.cwd(),
       env: { ...process.env, PRIVATE_KEY: privateKey },
@@ -71,7 +74,7 @@ try {
   if (result.error) throw result.error;
   if (result.status !== 0) {
     process.exitCode = result.status ?? 1;
-  } else {
+  } else if (isDeployment) {
     const deployment = JSON.parse(readFileSync("deployments/hadrian.json", "utf8"));
     console.log("\nVerifying HireHubEngagements on Sourcify…");
     const verify = spawnSync(

@@ -6,7 +6,8 @@ import {
   type Hex,
 } from "viem";
 import { hireHubAbi } from "./abi";
-import { HIREHUB_ADDRESS, hadrian } from "./config";
+import { HIREHUB_ADDRESS, HIREHUB_ENGAGEMENTS_ADDRESS, hadrian } from "./config";
+import { engagementAbi } from "./engagement-abi";
 import type { Profile, WorkRecord, WorkStatus } from "./types";
 
 export const publicClient = createPublicClient({
@@ -35,7 +36,7 @@ export async function loadProfiles(): Promise<Profile[]> {
 
 export async function loadProfile(profileId: bigint): Promise<Profile> {
   const address = requireContract();
-  const [raw, wallets] = await Promise.all([
+  const [raw, wallets, completedAgreements] = await Promise.all([
     publicClient.readContract({
       address,
       abi: hireHubAbi,
@@ -48,6 +49,14 @@ export async function loadProfile(profileId: bigint): Promise<Profile> {
       functionName: "getProfileWallets",
       args: [profileId],
     }),
+    HIREHUB_ENGAGEMENTS_ADDRESS
+      ? publicClient.readContract({
+          address: HIREHUB_ENGAGEMENTS_ADDRESS,
+          abi: engagementAbi,
+          functionName: "profileCompletedCount",
+          args: [profileId],
+        })
+      : 0n,
   ]);
 
   return {
@@ -60,6 +69,7 @@ export async function loadProfile(profileId: bigint): Promise<Profile> {
     createdAt: Number(raw.createdAt),
     workCount: Number(raw.workCount),
     attestationCount: Number(raw.attestationCount),
+    completedAgreements: Number(completedAgreements),
     wallets: wallets.map((wallet, index) => ({
       address: wallet,
       label: index === 0 ? "Profile owner" : "Consent-linked address",

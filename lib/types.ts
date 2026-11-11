@@ -28,6 +28,7 @@ export interface Profile {
   createdAt: number;
   workCount: number;
   attestationCount: number;
+  completedAgreements: number;
   wallets: WalletIdentity[];
 }
 

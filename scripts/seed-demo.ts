@@ -25,8 +25,8 @@ const HADRIAN_ENGAGEMENTS = "0xecd85ce77a64a18b2c9b6cb947fc10ed1715fede" as cons
 const DEMO = "Demo account ·";
 const OWNER_PROFILE_ID = 1n;
 const STATE_FILE = ".demo-seed.json";
-const GAS_TARGET = parseEther("0.4");
-const GAS_MINIMUM = parseEther("0.15");
+// Hadrian charges for Solana compute, so even small calls reserve several million gas.
+const GAS_BUFFER = parseEther("0.2");
 const REPO = "https://github.com/hoasine/rome-hirehub";
 
 const engagementCreatedAbi = [
@@ -199,32 +199,48 @@ async function main() {
     functionName: string,
     args: readonly unknown[],
   ) {
-    await topUp(wallet.address);
-    const hash = await wallet.writeContract({
+    const gas = await publicClient.estimateContractGas({
       address: to,
       abi,
       functionName,
       args,
       account: wallet.account!,
+    } as never);
+    const gasPrice = await publicClient.getGasPrice();
+    await topUp(wallet.address, (gas * gasPrice * 12n) / 10n);
+    const before = await publicClient.getBalance({ address: wallet.address });
+    const hash = await wallet.writeContract({
+      address: to,
+      abi,
+      functionName,
+      args,
+      gas,
+      account: wallet.account!,
       chain: publicClient.chain,
     } as never);
     const receipt = await publicClient.waitForTransactionReceipt({ hash });
     if (receipt.status !== "success") throw new Error(`${functionName} reverted (${hash})`);
+    spent += before - (await publicClient.getBalance({ address: wallet.address }));
     return receipt;
   }
 
-  async function topUp(address: Address) {
+  let spent = 0n;
+  async function topUp(address: Address, needed: bigint) {
     const balance = await publicClient.getBalance({ address });
-    if (balance >= GAS_MINIMUM) return;
-    const hash = await funder!.sendTransaction({ to: address, value: GAS_TARGET - balance });
+    if (balance >= needed) return;
+    const value = needed - balance + GAS_BUFFER;
+    const funderBalance = await publicClient.getBalance({ address: funder!.account.address });
+    if (funderBalance < value + GAS_BUFFER * 4n) {
+      throw new Error(
+        `The funder wallet has ${formatEther(funderBalance)} USDC left. ` +
+          "Bridge more test USDC to it, then run `npm run seed:demo` again to resume.",
+      );
+    }
+    const hash = await funder!.sendTransaction({ to: address, value });
     await publicClient.waitForTransactionReceipt({ hash });
   }
 
   console.log(`Funder ${funder.account.address}: ${formatEther(await publicClient.getBalance({ address: funder.account.address }))} gas`);
-  for (const key of Object.keys(personas) as PersonaKey[]) {
-    await topUp(wallets[key].address);
-  }
-  console.log("Demo wallets funded.");
 
   const profileIds = {} as Record<PersonaKey, bigint>;
   for (const key of Object.keys(personas) as PersonaKey[]) {
@@ -338,6 +354,7 @@ async function main() {
   for (const key of Object.keys(personas) as PersonaKey[]) {
     console.log(`  #${profileIds[key]} ${personas[key][0]}  ${wallets[key].address}`);
   }
+  console.log(`Demo wallets spent ${formatEther(spent)} gas on this run.`);
   console.log(`Funder balance: ${formatEther(await publicClient.getBalance({ address: funder.account.address }))} gas`);
 }
 

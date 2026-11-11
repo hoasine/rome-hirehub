@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 function readSecret(prompt) {
@@ -68,7 +69,30 @@ try {
   );
 
   if (result.error) throw result.error;
-  if (result.status !== 0) process.exitCode = result.status ?? 1;
+  if (result.status !== 0) {
+    process.exitCode = result.status ?? 1;
+  } else {
+    const deployment = JSON.parse(readFileSync("deployments/hadrian.json", "utf8"));
+    console.log("\nVerifying HireHubEngagements on Sourcify…");
+    const verify = spawnSync(
+      process.execPath,
+      [
+        hardhatCli,
+        "--network",
+        "hadrian",
+        "verify",
+        deployment.hireHubEngagements,
+        deployment.hireHub,
+      ],
+      { cwd: process.cwd(), env: process.env, stdio: "inherit" },
+    );
+    if (verify.status !== 0) {
+      console.log("Verification can be retried without a private key:");
+      console.log(
+        `npx hardhat verify --network hadrian ${deployment.hireHubEngagements} ${deployment.hireHub}`,
+      );
+    }
+  }
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
   process.exitCode = 1;

@@ -143,5 +143,65 @@ describe("HireHub", async () => {
       () => write(hub, owner, "createProfile", ["Again", "Duplicate", "", ""]),
       /AlreadyHasProfile|reverted/,
     );
+    await assert.rejects(
+      () => write(hub, stranger, "createProfile", ["x".repeat(65), "Too long", "", ""]),
+      /TextTooLong|reverted/,
+    );
+    await assert.rejects(
+      () => write(hub, stranger, "createProfile", ["", "Empty", "", ""]),
+      /EmptyValue|reverted/,
+    );
+  });
+
+  it("lets the owner cancel a pending wallet proposal", async () => {
+    const hub = await deploy();
+    await write(hub, owner, "createProfile", ["Owner", "Builder", "", ""]);
+    await write(hub, owner, "proposeWallet", [1n, linked.account.address]);
+    await assert.rejects(
+      () => write(hub, stranger, "cancelWalletProposal", [1n, linked.account.address]),
+      /NotProfileOwner|reverted/,
+    );
+    await write(hub, owner, "cancelWalletProposal", [1n, linked.account.address]);
+    assert.equal(await hub.read.pendingWalletLinks([1n, linked.account.address]), false);
+    await assert.rejects(
+      () => write(hub, linked, "acceptWalletLink", [1n]),
+      /LinkNotProposed|reverted/,
+    );
+  });
+
+  it("enforces review rating rules and blocks non-members from submitting", async () => {
+    const hub = await deploy();
+    await write(hub, owner, "createProfile", ["Builder", "Engineer", "", ""]);
+    await assert.rejects(
+      () =>
+        write(hub, stranger, "submitWork", [
+          1n,
+          employer.account.address,
+          "Not mine",
+          "",
+          "https://example.com",
+        ]),
+      /NotProfileMember|reverted/,
+    );
+    await write(hub, owner, "submitWork", [
+      1n,
+      employer.account.address,
+      "Audit",
+      "",
+      "https://example.com/audit",
+    ]);
+    await assert.rejects(
+      () => write(hub, employer, "reviewWork", [1n, true, 0, "No stars"]),
+      /InvalidRating|reverted/,
+    );
+    await assert.rejects(
+      () => write(hub, employer, "reviewWork", [1n, false, 3, "Rated rejection"]),
+      /InvalidRating|reverted/,
+    );
+    await write(hub, employer, "reviewWork", [1n, false, 0, "Not delivered"]);
+    const rejected = (await hub.read.getWork([1n])) as { status: number };
+    const profile = (await hub.read.getProfile([1n])) as { attestationCount: number };
+    assert.equal(rejected.status, 2);
+    assert.equal(profile.attestationCount, 0);
   });
 });

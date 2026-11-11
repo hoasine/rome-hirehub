@@ -18,6 +18,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -35,8 +36,8 @@ type WalletLane = "evm" | "solana";
 
 interface Eip1193Provider {
   request(args: { method: string; params?: unknown[] }): Promise<unknown>;
-  on?(event: "accountsChanged", listener: (accounts: string[]) => void): void;
-  removeListener?(event: "accountsChanged", listener: (accounts: string[]) => void): void;
+  on?(event: string, listener: (...args: never[]) => void): void;
+  removeListener?(event: string, listener: (...args: never[]) => void): void;
 }
 
 interface StandardAccount {
@@ -69,6 +70,13 @@ interface SignTransactionFeature {
   }): Promise<readonly { signedTransaction: Uint8Array }[]>;
 }
 
+interface EventsFeature {
+  on(
+    event: "change",
+    listener: (properties: { accounts?: readonly StandardAccount[] }) => void,
+  ): () => void;
+}
+
 interface WalletContextValue {
   evmAddress: Address | null;
   solanaAddress: string | null;
@@ -76,11 +84,12 @@ interface WalletContextValue {
   activeAddress: Address | null;
   activeLane: WalletLane | null;
   transaction: TransactionState;
+  isBusy: boolean;
   connectEvm(): Promise<void>;
   connectSolana(): Promise<void>;
   selectLane(lane: WalletLane): void;
   disconnect(): void;
-  executeCall(data: Hex): Promise<void>;
+  executeCall(data: Hex, target?: Address): Promise<void>;
   resetTransaction(): void;
 }
 
@@ -110,6 +119,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [solanaSupportsV1, setSolanaSupportsV1] = useState(false);
   const [activeLane, setActiveLane] = useState<WalletLane | null>(null);
   const [transaction, setTransaction] = useState<TransactionState>({ status: "idle" });
+  const busyRef = useRef(false);
+  const stopSolanaEvents = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     const provider = ethereumProvider();
@@ -123,9 +134,19 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         setActiveLane((lane) => (lane === "evm" ? null : lane));
       }
     };
+    const handleChainChanged = () => {
+      setTransaction({ status: "idle" });
+    };
 
-    provider.on("accountsChanged", handleAccountsChanged);
-    return () => provider.removeListener?.("accountsChanged", handleAccountsChanged);
+    provider.on("accountsChanged", handleAccountsChanged as (...args: never[]) => void);
+    provider.on("chainChanged", handleChainChanged);
+    return () => {
+      provider.removeListener?.(
+        "accountsChanged",
+        handleAccountsChanged as (...args: never[]) => void,
+      );
+      provider.removeListener?.("chainChanged", handleChainChanged);
+    };
   }, []);
 
   const connectEvm = useCallback(async () => {
@@ -139,7 +160,12 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         method: "wallet_switchEthereumChain",
         params: [{ chainId: `0x${hadrian.id.toString(16)}` }],
       });
-    } catch {
+    } catch (error) {
+      const code =
+        typeof error === "object" && error && "code" in error
+          ? Number(error.code)
+          : undefined;
+      if (code !== 4902) throw error;
       await provider.request({
         method: "wallet_addEthereumChain",
         params: [
@@ -251,10 +277,26 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         return Transaction.from(signed);
       };
     });
+    stopSolanaEvents.current?.();
+    const events = wallet.features["standard:events"] as EventsFeature | undefined;
+    stopSolanaEvents.current =
+      events?.on("change", ({ accounts }) => {
+        const next = accounts?.[0];
+        if (!next || next.address !== account.address) {
+          setSolanaAddress(null);
+          setSyntheticAddress(null);
+          setSolanaSigner(null);
+          setSignLegacyTransaction(null);
+          setSolanaSupportsV1(false);
+          setActiveLane((lane) => (lane === "solana" ? null : lane));
+        }
+      }) ?? null;
     setActiveLane("solana");
   }, []);
 
   const disconnect = useCallback(() => {
+    stopSolanaEvents.current?.();
+    stopSolanaEvents.current = null;
     setEvmAddress(null);
     setSolanaAddress(null);
     setSyntheticAddress(null);
@@ -265,18 +307,32 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const executeCall = useCallback(
-    async (data: Hex): Promise<void> => {
-      if (!HIREHUB_ADDRESS) {
+    async (data: Hex, target?: Address): Promise<void> => {
+      const destination = target ?? HIREHUB_ADDRESS;
+      if (!destination) {
         throw new Error("Preview mode is read-only. Deploy HireHub and configure its address first.");
       }
+      if (busyRef.current) {
+        throw new Error("Another transaction is already in progress.");
+      }
+      busyRef.current = true;
       try {
         setTransaction({ status: "preparing", message: "Preparing your Rome transaction…" });
         if (activeLane === "evm" && evmAddress) {
           const provider = ethereumProvider();
+          if (!provider) throw new Error("The connected EVM wallet is unavailable.");
+          const chainId = await provider.request({ method: "eth_chainId" });
+          if (Number(chainId) !== hadrian.id) {
+            throw new Error("Switch your EVM wallet to Rome Hadrian before signing.");
+          }
+          const balance = await publicClient.getBalance({ address: evmAddress });
+          if (balance === 0n) {
+            throw new Error("This Rome address has no Hadrian gas balance.");
+          }
           setTransaction({ status: "signing", message: "Confirm this action in your EVM wallet." });
           const hash = await submitRomeTx(provider, {
             from: evmAddress,
-            to: HIREHUB_ADDRESS,
+            to: destination,
             data,
           });
           setTransaction({
@@ -322,7 +378,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
             });
             const result = await submitRomeTxV1(
               { ...laneDeps, signer: solanaSigner },
-              { to: HIREHUB_ADDRESS, data },
+              { to: destination, data },
             );
             if (result.receipt?.status !== "0x1") {
               throw new Error("The Rome transaction was not confirmed successfully.");
@@ -343,7 +399,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
             const payer = new PublicKey(solanaAddress);
             const result = await submitRomeTxSolanaLane(
               { ...laneDeps, payer, signTransaction: signLegacyTransaction },
-              { to: HIREHUB_ADDRESS, data },
+              { to: destination, data },
             );
             setTransaction({
               status: "success",
@@ -356,6 +412,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         setTransaction({ status: "error", message: errorMessage(error) });
         throw error;
+      } finally {
+        busyRef.current = false;
       }
     },
     [
@@ -377,6 +435,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       activeAddress: activeLane === "evm" ? evmAddress : syntheticAddress,
       activeLane,
       transaction,
+      isBusy: ["preparing", "signing", "confirming"].includes(transaction.status),
       connectEvm,
       connectSolana,
       selectLane: setActiveLane,

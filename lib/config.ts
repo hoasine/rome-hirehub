@@ -20,10 +20,17 @@ export const SOLANA_RPC =
   process.env.NEXT_PUBLIC_SOLANA_RPC ?? "https://api.devnet.solana.com";
 
 const configuredAddress = process.env.NEXT_PUBLIC_HIREHUB_ADDRESS;
+const configuredEngagementsAddress =
+  process.env.NEXT_PUBLIC_HIREHUB_ENGAGEMENTS_ADDRESS;
 
 export const HIREHUB_ADDRESS: Address | null =
   configuredAddress && isAddress(configuredAddress)
     ? getAddress(configuredAddress)
+    : null;
+
+export const HIREHUB_ENGAGEMENTS_ADDRESS: Address | null =
+  configuredEngagementsAddress && isAddress(configuredEngagementsAddress)
+    ? getAddress(configuredEngagementsAddress)
     : null;
 
 export const VIA_BASE_URL = "https://via-hadrian.testnet.romeprotocol.xyz";

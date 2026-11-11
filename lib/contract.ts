@@ -62,8 +62,10 @@ export async function loadProfile(profileId: bigint): Promise<Profile> {
     attestationCount: Number(raw.attestationCount),
     wallets: wallets.map((wallet, index) => ({
       address: wallet,
-      label: index === 0 ? "Owner" : "Linked wallet",
-      kind: "evm" as const,
+      label: index === 0 ? "Profile owner" : "Consent-linked address",
+      // The v1 registry stores Rome addresses, not wallet provenance. The UI
+      // upgrades a connected synthetic address to "solana" when it can prove it.
+      kind: "rome" as const,
     })),
   };
 }
@@ -113,11 +115,75 @@ export async function profileIdForWallet(wallet: Address) {
   });
 }
 
+export async function findPendingWalletLinkProfiles(wallet: Address) {
+  const address = requireContract();
+  const count = await publicClient.readContract({
+    address,
+    abi: hireHubAbi,
+    functionName: "profileCount",
+  });
+  const checks = Array.from({ length: Number(count) }, async (_, index) => {
+    const profileId = BigInt(index + 1);
+    const pending = await publicClient.readContract({
+      address,
+      abi: hireHubAbi,
+      functionName: "pendingWalletLinks",
+      args: [profileId, wallet],
+    });
+    return pending ? profileId : null;
+  });
+  return (await Promise.all(checks)).filter(
+    (profileId): profileId is bigint => profileId !== null,
+  );
+}
+
+export async function loadEmployerInbox(wallet: Address): Promise<WorkRecord[]> {
+  const address = requireContract();
+  const count = await publicClient.readContract({
+    address,
+    abi: hireHubAbi,
+    functionName: "workCount",
+  });
+  const records = await Promise.all(
+    Array.from({ length: Number(count) }, async (_, index): Promise<WorkRecord | null> => {
+      const id = BigInt(index + 1);
+      const raw = await publicClient.readContract({
+        address,
+        abi: hireHubAbi,
+        functionName: "getWork",
+        args: [id],
+      });
+      if (
+        raw.employer.toLowerCase() !== wallet.toLowerCase() ||
+        raw.status !== 0
+      ) {
+        return null;
+      }
+      return {
+        id,
+        profileId: raw.profileId,
+        contributor: raw.contributor,
+        employer: raw.employer,
+        title: raw.title,
+        description: raw.description,
+        evidenceUrl: raw.evidenceUrl,
+        review: raw.review,
+        createdAt: Number(raw.createdAt),
+        reviewedAt: Number(raw.reviewedAt),
+        rating: Number(raw.rating),
+        status: "pending",
+      };
+    }),
+  );
+  return records.filter((record): record is WorkRecord => record !== null);
+}
+
 export function encodeHireHubCall(
   functionName:
     | "createProfile"
     | "updateProfile"
     | "proposeWallet"
+    | "cancelWalletProposal"
     | "acceptWalletLink"
     | "submitWork"
     | "reviewWork",

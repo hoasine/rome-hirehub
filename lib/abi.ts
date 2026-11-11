@@ -74,6 +74,16 @@ export const hireHubAbi = [
   },
   {
     type: "function",
+    name: "cancelWalletProposal",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "profileId", type: "uint256" },
+      { name: "wallet", type: "address" },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function",
     name: "submitWork",
     stateMutability: "nonpayable",
     inputs: [

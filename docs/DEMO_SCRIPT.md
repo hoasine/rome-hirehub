@@ -5,36 +5,32 @@ Target length: 2–3 minutes.
 ## Preparation
 
 1. Open the deployed HIREhub app.
-2. Prepare MetaMask on Hadrian and Solflare on Devnet.
-3. Give each wallet a small amount of test gas.
-4. Open the deployed contract in Via Explorer in a second tab.
+2. Prepare two identities: an employer on MetaMask (Hadrian) and a contributor on Solflare (Devnet). Each needs a HIREhub profile and a little test gas.
+3. Optional: hold a Hadrian ERC-20 in the employer wallet to show escrow.
+4. Open both contracts in Via Explorer in a second tab.
 
 ## Recording
 
-### 1. Explain the product
+### 1. Explain the product (20 s)
 
-“HIREhub gives EVM and Solana contributors one verifiable work history. It uses one Solidity contract and one shared state on Rome.”
+"HIREhub is a work market where EVM and Solana wallets hire, deliver, pay, and attest in one shared Rome state."
 
-Show the contributor directory, address search, profile cards, and work counts.
+Show the live block height, the contributor directory, and a search for a skill.
 
-### 2. Create a profile from MetaMask
+### 2. Employer proposes work from MetaMask (30 s)
 
-Connect MetaMask, choose “Create your profile,” complete the short form, and sign. Show the transaction status and open its Via link.
+Connect MetaMask and open the Solflare contributor's profile. Choose "Propose engagement", enter a milestone title and acceptance criteria, and optionally a token and amount. If escrow is set, sign the allowance first, then the agreement.
 
-### 3. Prove multi-wallet identity
+### 3. Contributor accepts and delivers from Solflare (40 s)
 
-Open the new profile and choose “Link wallet.” Connect Solflare once to reveal its Rome synthetic address, switch back to MetaMask, and propose that synthetic address.
+Switch to Solflare. The dashboard lists the agreement. Accept it, then choose "Submit evidence" and paste a GitHub or IPFS link. Point out that Solflare signs a readable Rome authorization and never creates an EVM key.
 
-Activate Solflare, choose “Accept wallet link,” enter the profile ID, and sign the readable Rome authorization plus the v1 transaction. Reopen the profile and show both verified wallets.
+### 4. Employer approves and pays (30 s)
 
-### 4. Submit work and attest it
+Switch back to MetaMask and choose "Review delivery". Approve with five stars and a short review. Show the agreement marked Completed, the "Paid" escrow line, and the contributor's completed count.
 
-From either linked wallet, add a work record with the employer’s EVM address and a GitHub/demo URL.
+### 5. Close with proof (20 s)
 
-Switch to the employer account. Open the work record, approve it, assign five stars, and publish a short review.
+Open `/engagement/<id>` to show the public record, then the Via Explorer transaction.
 
-### 5. Close with Rome
-
-Show the updated attestation count and Via Explorer.
-
-“The Solana wallet never created an EVM key, and no profile data was mirrored. Both wallets used the same contract, state, and work history through Rome.”
+"An EVM employer just hired and paid a Solana contributor against one escrow and one reputation ledger. No bridge, no mirror, no second deployment. That only works on Rome."

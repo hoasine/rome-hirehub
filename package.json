@@ -14,6 +14,7 @@
     "deploy:hadrian": "hardhat run scripts/deploy.ts --network hadrian",
     "deploy:secure": "node scripts/deploy-secure.mjs",
     "seed:hadrian": "hardhat run scripts/seed.ts --network hadrian",
+    "test:e2e": "playwright test",
     "check": "npm run lint && npm run typecheck && npm run test:contracts && npm run build"
   },
   "dependencies": {
@@ -33,6 +34,7 @@
     "@nomicfoundation/hardhat-node-test-runner": "^3.1.2",
     "@nomicfoundation/hardhat-verify": "^3.1.4",
     "@nomicfoundation/hardhat-viem": "^3.1.0",
+    "@playwright/test": "^1.65.0",
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

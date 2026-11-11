@@ -60,8 +60,10 @@ EVM and Solana wallets — HIREhub.
 - Live app: `https://rome-hirehub.vercel.app`
 - Source repository: `https://github.com/hoasine/rome-hirehub`
 - HireHub identity contract: `0x079206514810cf8051b9707dc6ffe7dfec5eb48d`
-- HireHubEngagements contract: `ADD_ENGAGEMENTS_ADDRESS`
-- Via Explorer: `https://via-hadrian.testnet.romeprotocol.xyz/address/0x079206514810cf8051b9707dc6ffe7dfec5eb48d`
-- Verified source: `https://verify.testnet.romeprotocol.xyz/repo-ui/200010/0x079206514810cf8051b9707dc6ffe7dfec5eb48d`
+- HireHubEngagements contract: `0xecd85ce77a64a18b2c9b6cb947fc10ed1715fede`
+- Via Explorer (identity): `https://via-hadrian.testnet.romeprotocol.xyz/address/0x079206514810cf8051b9707dc6ffe7dfec5eb48d`
+- Via Explorer (engagements): `https://via-hadrian.testnet.romeprotocol.xyz/address/0xecd85ce77a64a18b2c9b6cb947fc10ed1715fede`
+- Verified source (identity): `https://verify.testnet.romeprotocol.xyz/repo-ui/200010/0x079206514810cf8051b9707dc6ffe7dfec5eb48d`
+- Verified source (engagements): `https://verify.testnet.romeprotocol.xyz/repo-ui/200010/0xecd85ce77a64a18b2c9b6cb947fc10ed1715fede`
 - Demo video: `ADD_VIDEO_URL`
 - X post: `ADD_X_URL`

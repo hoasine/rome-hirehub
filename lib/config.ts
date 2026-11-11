@@ -19,9 +19,9 @@ export const ROME_PROGRAM_ID = "RPTWwELXAY4KC9ZPHhaxp7Sq1hHtU3HNEgLbSegCcWf";
 export const SOLANA_RPC =
   process.env.NEXT_PUBLIC_SOLANA_RPC ?? "https://api.devnet.solana.com";
 
-const configuredAddress = process.env.NEXT_PUBLIC_HIREHUB_ADDRESS;
+const configuredAddress = process.env.NEXT_PUBLIC_HIREHUB_ADDRESS?.trim();
 const configuredEngagementsAddress =
-  process.env.NEXT_PUBLIC_HIREHUB_ENGAGEMENTS_ADDRESS;
+  process.env.NEXT_PUBLIC_HIREHUB_ENGAGEMENTS_ADDRESS?.trim();
 
 export const HIREHUB_ADDRESS: Address | null =
   configuredAddress && isAddress(configuredAddress)

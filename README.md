@@ -7,10 +7,8 @@ HIREhub is a bilateral work market built for the Rome Arena. EVM and Solana empl
 ## Live deployment
 
 - App: https://rome-hirehub.vercel.app
-- HireHub identity contract: `0x079206514810cf8051b9707dc6ffe7dfec5eb48d`
-- Explorer: https://via-hadrian.testnet.romeprotocol.xyz/address/0x079206514810cf8051b9707dc6ffe7dfec5eb48d
-- Verified source: https://verify.testnet.romeprotocol.xyz/repo-ui/200010/0x079206514810cf8051b9707dc6ffe7dfec5eb48d
-- HireHubEngagements contract: see [`deployments/hadrian.json`](deployments/hadrian.json) after deployment
+- HireHub identity contract: `0x079206514810cf8051b9707dc6ffe7dfec5eb48d` ([explorer](https://via-hadrian.testnet.romeprotocol.xyz/address/0x079206514810cf8051b9707dc6ffe7dfec5eb48d), [verified source](https://verify.testnet.romeprotocol.xyz/repo-ui/200010/0x079206514810cf8051b9707dc6ffe7dfec5eb48d))
+- HireHubEngagements contract: `0xecd85ce77a64a18b2c9b6cb947fc10ed1715fede` ([explorer](https://via-hadrian.testnet.romeprotocol.xyz/address/0xecd85ce77a64a18b2c9b6cb947fc10ed1715fede), [verified source](https://verify.testnet.romeprotocol.xyz/repo-ui/200010/0xecd85ce77a64a18b2c9b6cb947fc10ed1715fede))
 
 ## What it proves
 
